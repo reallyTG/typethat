@@ -220,6 +220,9 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 	all_results <- list()
 	fname <- ""
 
+	# debug
+	print(path_to_dir)
+
 	for (i in 1:length(file_names)) {
 
 		# get path to file

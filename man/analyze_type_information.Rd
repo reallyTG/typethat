@@ -13,8 +13,12 @@ analyze_type_information(tally)
 \item{tally}{the tally to analyze, use readRDS on type_from_package output}
 }
 \description{
-analyze_type_information takes a tally and lists some things about it:
-[1] how many easy monomorphic, hard monomorphic, and polymorphic functions
-    are there
-[2] for easy monomorphic functions, suggestions for annotation
+Types of ``morphicity'':
+monomorphic
+optional monomorphic
+simple polymorphic
+optional simple polymorphic
+complex polymorphic
+optional polymorphic
+complex polymorphic with other optional argument
 }

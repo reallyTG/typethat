@@ -7,6 +7,10 @@ NOTE: only caring about typeof at this time}
 \usage{
 analyze_all(path)
 }
+\arguments{
+\item{path}{path to the results of type_all_packages (this should be something
+of the form */typeres)}
+}
 \description{
 Analyze all .RDS files (output from type_all_packages) in a specified dir.
 NOTE: only caring about typeof at this time
