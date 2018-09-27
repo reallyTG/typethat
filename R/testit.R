@@ -77,8 +77,6 @@ type_trace_args_tally <- function(a_trace) {
 		# function had no arguments, nothing to do
 	}
 
-	# TODO: make retv appear...
-
 	# some tests are ill-formed, and cause runtime failures when we run them
 	# one particular issue is arg_names which are blank, due to some error on the
 	# test author's part. we can avoid that with this trycatch.
@@ -230,8 +228,6 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 		# read file, get trace
 		this_trace <- readRDS( f_path)
 
-		# TODO: is the tested function unique accross one directory?
-		# i think so...
 		fname <- this_trace$fun
 
 		# emit trace information

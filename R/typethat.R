@@ -1,34 +1,7 @@
-# # #
-# TODO Sept 21st 2018
+# Sept 27 '18 TODO:
+# [1] Look into functions only called once.
+# [2] Look into reverse dependencies.
 #
-# [1] Best way to automate?
-# [1.1] Is there a cluster/supercomputer/server/something like that?
-# [1.2] Need the code to be more robust, some packages don't actually work
-#       that well, as in the exported data might be ill-formed, or the
-#       analysis might not work so well on the exported data.
-# [1.2.1] One issue is with needing to eval arguments to figure out their type.
-# [2] Do we want a different trace/decorator, or more instrumentation?
-# [2.1] Right now the decoration is only happening on.exit(). Do we need a more
-#       granular analysis?
-# [3] Should we start thinking about a possible type system?
-# [3.1] How would it fit with Julia's?
-#
-# A paper looking at arguments of functions:
-# Dynamic analysis of types of functions Python?
-#
-# How many functions are monomorphic? Only one type signature.
-# Can we typecheck monomorphic functions? Need tool to analyze the code.
-#
-# For polymorphic functions, what do we need in the TS to capture them with
-# some elegance.
-#
-# If we had an infinite TS, what would go into it?
-#
-# Data frames themselves probably have a more complicated type. Can go deeper
-# that the surface tag.
-#
-# # #
-
 
 # typethat usage...
 # result <-
@@ -93,7 +66,6 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
 #' @param clean should we clean up the type_res directory?
 #' @export
 # type all packages in directory, tally results
-# TODO: make this not install
 #
 type_all_packages <- function(package_names, clean=FALSE) {
 
@@ -120,7 +92,7 @@ type_all_packages <- function(package_names, clean=FALSE) {
 
       cat(".\n.\n.\n > Loading Package ... \n.\n.\n.\n")
 
-      use_package(package_names[i])
+      usePackage(package_names[i])
 
       cat(".\n.\n.\n > Package Loaded \n > Typing Package ... \n.\n.\n.\n")
 
@@ -144,11 +116,10 @@ type_all_packages <- function(package_names, clean=FALSE) {
   }
 }
 
-# TODO Change name, masked from devtools
 # for downloading packages properly
 # adapted from http://www.salemmarafi.com/code/install-r-package-automatically/
 #' @export
-use_package <- function(p)
+usePackage <- function(p)
 {
   if (!is.element(p, installed.packages()[,1]))
     install.packages(p, dep = TRUE, repos="https://cloud.r-project.org")
@@ -157,9 +128,15 @@ use_package <- function(p)
 
 #' Analyze all .RDS files (output from type_all_packages) in a specified dir.
 #' NOTE: only caring about typeof at this time
+#' @param path path to the results of type_all_packages (this should be something
+#'             of the form */typeres)
 #' @export
 #
 analyze_all <- function(path) {
+
+  if (substring(path, nchar(p)) == "/") {
+    path = substring(path, 0, nchar(p)-1)
+  }
 
   # get files to ... get
   # this ought to be type_res
@@ -313,7 +290,7 @@ analyze_type_information <- function(tally) {
 
       if (length(tally[[q]][[i]]) == 0) {
         # single argument function
-        # TODO: must be monomorphic ... ?
+        # TODO: something about only being called once?
         res[[fun_names[i]]][[which_one[q]]]$morphicity <- "monomorphic"
         next
       }
@@ -565,26 +542,3 @@ string_for_possibly_array <- function(plos) {
   }
   out
 }
-
-# Garbo from analyze_type_information
-# older stuff
-# # this is polymorphic
-# inter <- intersect(tally[[q]][[i]][[j]], simple_polymorphic_types)
-# if (length(inter) == length(tally[[q]][[i]][[j]])) {
-#   res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "simple polymorphic"
-# } else {
-#   res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "complex polymorphic"
-#
-#   # is there a NULL?
-#   if ("NULL" %in% tally[[q]][[i]][[j]]) {
-#     # ok, with NULL in there we are surely dealing with optional
-#     # find it
-#     for (z in 1:length(tally[[q]][[i]][[j]])) {
-#       if (tally[[q]][[i]][[j]][[z]] == "NULL") {
-#         # remove the NULL
-#         tally[[q]][[i]][[j]][[z]] <- NULL
-#         break
-#       }
-#     }
-#     # what does the item look like now?
-#     inter <- intersect(tally[[q]][[i]][[j]], simple_polymorphic_types)
