@@ -1,8 +1,70 @@
-#
+# debug function
 type_trace_args <- function(a_trace) {
 	for (i in 1:length(a_trace$args)) {
 		print( typeof( eval( a_trace$args[[i]], a_trace$globals)))
 	}
+}
+
+#' Temporary function to update old traces for compliance.
+#' @export
+update_all_traces <- function(path) {
+	if (substring(path, nchar(path)) == "/") {
+    path = substring(path, 0, nchar(path)-1)
+  }
+
+  # get files to ... get
+  # this ought to be type_res
+  lof <- list.files(path)
+
+  # get names from lof
+  package_names <- c()
+
+  q <- 1
+  for (f in lof) {
+    # 8 is the index of the character following result_
+    # nchar(f) - 4 to get rid of .RDS
+    package_names[q] <- substring(f, 8, nchar(f) - 4)
+    q = q + 1
+  }
+
+	for (i in 1:length(lof)) {
+    # look @ the file, do analysis
+    look_at_me <- readRDS(paste(path, lof[i], sep="/"))
+
+		new_one <- find_singletons_in_old_trace(look_at_me)
+
+		saveRDS(new_one, paste(path, lof[i], sep="/"))
+
+	}
+
+}
+
+#' Temporary function for compatibility with old, already saved tallies.
+#' Intended to bring old data "up to speed" to stay on top of changes to
+#' the generation process.
+#' @export
+find_singletons_in_old_trace <- function(tally) {
+	# get file argument names
+	fun_names <- names( tally$file_argument_usage)
+
+	single_funs <- list()
+	s_f <- 1
+
+	for (name in fun_names) {
+		# tally$file_argument_usage[[name]] is the arg usage + other stuff
+		if (length(unlist(tally$file_argument_usage[[name]])) ==
+	      length(tally$type_usage[[name]])) {
+		  # found a singleton
+			single_funs[[s_f]] <- name
+			s_f = s_f + 1
+		}
+	}
+
+	tally[[6]] <- single_funs
+
+	# return it
+	tally
+
 }
 
 #
@@ -127,6 +189,12 @@ aggregate_tally_results <- function(lot) {
 	this_mode_agg <- list()
 	this_storage_mode_agg <- list()
 
+	# keep track of singletons
+	# relies on information supplied by calling function (through the singleton
+  # functions themselves)
+	singletons <- list()
+	s_p <- 1
+
 	# get the used argument names
   used_args <- get_used_args(lot)
 	# we deal with return separately
@@ -145,6 +213,12 @@ aggregate_tally_results <- function(lot) {
 			mode_agg[[fname]] <- this_mode_agg
 			storage_mode_agg[[fname]] <- this_storage_mode_agg
 
+			if (!is.null(lot[[i-1]]$is_single_call)) {
+				# if its not null, it must be true by our construction
+				singletons[[s_p]] <- fname
+				s_p <- s_p + 1
+			}
+
 			# were out of bounds, break here
 			break;
 		}
@@ -162,6 +236,12 @@ aggregate_tally_results <- function(lot) {
 			this_class_agg <- list()
 			this_mode_agg <- list()
 			this_storage_mode_agg <- list()
+
+			if (!is.null(lot[[i-1]]$is_single_call)) {
+				# if its not null, it must be true by our construction
+				singletons[[s_p]] <- fname
+				s_p <- s_p + 1
+			}
 
 			fname <- attributes(lot[[i]])$fun # next name
 		}
@@ -202,9 +282,10 @@ aggregate_tally_results <- function(lot) {
 		}
 
 	}
+
 	list( type_usage=type_agg, class_usage=class_agg,
 			  mode_usage=mode_agg, storage_mode_usage=storage_mode_agg,
-			  file_argument_usage=file_info)
+			  file_argument_usage=file_info, singletons=singletons)
 }
 
 #
@@ -220,8 +301,21 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 	all_results <- list()
 	fname <- ""
 
-	# debug
-	# print(path_to_dir)
+	# determine how many traces there are of each function
+	# functions only called one time are trivially monomorphic, so we might
+	# be interested in accounting for those.
+	singletons <- list()
+	s_p <- 1
+	double_down <- list.files(path_to_dir) # the files are in pkgname/pkgname...
+	for (dir in list.files(paste(path_to_dir, double_down, sep="/"))) {
+		the_sub_dir <- paste(path_to_dir, double_down, "/", dir, sep="")
+		if (1 == length(list.files(the_sub_dir))) {
+			# this sub dir only has a single call
+			# save fun name
+			singletons[[s_p]] <- dir # dir is also the fun name
+			s_p = s_p + 1
+		}
+	}
 
 	for (i in 1:length(file_names)) {
 
@@ -236,6 +330,10 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 		# emit trace information
 	  trace_result <- type_trace_args_tally( this_trace)
 		trace_result$file_path = f_path
+
+		if (fname %in% singletons) {
+			trace_result$is_single_call <- TRUE
+		}
 
 		all_results[[i]] <- trace_result
 

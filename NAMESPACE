@@ -2,9 +2,11 @@
 
 export(analyze_all)
 export(analyze_type_information)
+export(find_singletons_in_old_trace)
 export(print_tally_results)
 export(simplify_analysis)
 export(type_all_packages)
 export(type_from_package)
 export(type_trace_all_tally)
+export(update_all_traces)
 export(usePackage)

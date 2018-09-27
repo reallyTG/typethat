@@ -51,7 +51,7 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
 
   # > second, look at the list of files, and tally up the
   #   results of the trace
-  if (length(lof) > 1) {
+  if (length(lof) > 0) {
     # there are files to analyze
     res <- type_trace_all_tally( lof, paste("./tmp/", pkgs_to_trace, "/", sep=""))
   } else {
@@ -67,7 +67,7 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
 #' @export
 # type all packages in directory, tally results
 #
-type_all_packages <- function(package_names, clean=FALSE) {
+type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE) {
 
   # tell genthat where to find the package sources
   options(genthat.source_paths="packages")
@@ -97,7 +97,7 @@ type_all_packages <- function(package_names, clean=FALSE) {
       cat(".\n.\n.\n > Package Loaded \n > Typing Package ... \n.\n.\n.\n")
 
       # do the thing
-      this_res <- type_from_package(package_names[i])
+      this_res <- type_from_package(package_names[i], skipgen=skipgen)
 
       cat(".\n.\n.\n > Package Typed \n > Writing, and continuing \n.\n.\n.\n")
 
@@ -134,8 +134,8 @@ usePackage <- function(p)
 #
 analyze_all <- function(path) {
 
-  if (substring(path, nchar(p)) == "/") {
-    path = substring(path, 0, nchar(p)-1)
+  if (substring(path, nchar(path)) == "/") {
+    path = substring(path, 0, nchar(path)-1)
   }
 
   # get files to ... get
@@ -156,6 +156,7 @@ analyze_all <- function(path) {
   # prepare output as a list
   res <- list()
 
+  res$num_singles = 0
   res$num_mono = 0
   res$num_mono_opt = 0
   res$num_poly_simpl = 0
@@ -181,6 +182,7 @@ analyze_all <- function(path) {
       }
     }
 
+    res$num_singles = res$num_singles + counts$singles
     res$num_mono = res$num_mono + counts$mono
     res$num_mono_opt = res$num_mono_opt + counts$mono_o
     res$num_poly_simpl = res$num_poly_simpl + counts$polys
@@ -201,6 +203,7 @@ simplify_analysis <- function(analysis) {
 
   res <- list()
 
+  num_singles <- 0
   num_mono <- 0
   num_mono_opt <- 0
   num_poly_simpl <- 0
@@ -213,7 +216,9 @@ simplify_analysis <- function(analysis) {
 
   p <- 1
   for (i in 1:length(analysis)) {
-    if (analysis[[i]][[1]]$morphicity == "monomorphic") { # 1 for type
+    if (analysis[[i]][[1]]$morphicity == "singleton") {
+      num_singles = num_singles + 1
+    } else if (analysis[[i]][[1]]$morphicity == "monomorphic") { # 1 for type
       num_mono = num_mono + 1
     } else if (analysis[[i]][[1]]$morphicity == "polymorphic") {
       if (analysis[[i]][[1]]$polymorphicity == "simple polymorphic") {
@@ -239,6 +244,7 @@ simplify_analysis <- function(analysis) {
     }
   }
 
+  res$singles = num_singles
   res$mono = num_mono
   res$mono_o = num_mono_opt
   res$polys = num_poly_simpl
@@ -287,6 +293,12 @@ analyze_type_information <- function(tally) {
   # how many are monomorphic?
   for (q in 1:length(which_one)) {
     for (i in 1:length(fun_names)) {
+
+      if (fun_names[i] %in% tally[[6]]) { # [[6]] has singleton funs
+        # if its not null, its true by construction
+        res[[fun_names[i]]][[which_one[q]]]$morphicity <- "singleton"
+        next
+      }
 
       if (length(tally[[q]][[i]]) == 0) {
         # single argument function

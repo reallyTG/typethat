@@ -5,7 +5,7 @@
 \title{Extract type information from many packages, and consolidate information.
 e.g. how many functions have an argument with more than one type?}
 \usage{
-type_all_packages(package_names, clean = FALSE)
+type_all_packages(package_names, clean = FALSE, skipgen = FALSE)
 }
 \arguments{
 \item{package_names}{the list of package names to type.}
