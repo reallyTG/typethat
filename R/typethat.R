@@ -288,9 +288,13 @@ analyze_type_information <- function(tally, type="type") {
   q = 1 # type is default, in q = 1
   if (type == "class") {
     q = 2 # if class specified, get 2
+  } else if (type == "mode") {
+    q = 3
+  } else if (type == "storage.mode") {
+    q = 4
   }
 
-  which_one = c("type", "class")
+  which_one = c("type", "class", "mode", "storage.mode")
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
