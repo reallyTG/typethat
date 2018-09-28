@@ -2,16 +2,16 @@
 % Please edit documentation in R/typethat.R
 \name{analyze_all}
 \alias{analyze_all}
-\title{Analyze all .RDS files (output from type_all_packages) in a specified dir.
-NOTE: only caring about typeof at this time}
+\title{Analyze all .RDS files (output from type_all_packages) in a specified dir.}
 \usage{
-analyze_all(path)
+analyze_all(path, type = "type")
 }
 \arguments{
 \item{path}{path to the results of type_all_packages (this should be something
 of the form */typeres)}
+
+\item{type}{the type of info you want. either "type" or "class"}
 }
 \description{
 Analyze all .RDS files (output from type_all_packages) in a specified dir.
-NOTE: only caring about typeof at this time
 }

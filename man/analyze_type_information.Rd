@@ -7,10 +7,12 @@
     are there
 [2] for easy monomorphic functions, suggestions for annotation}
 \usage{
-analyze_type_information(tally)
+analyze_type_information(tally, type = "type")
 }
 \arguments{
 \item{tally}{the tally to analyze, use readRDS on type_from_package output}
+
+\item{type}{the type of info to get. either "type" or "class".}
 }
 \description{
 Types of ``morphicity'':
