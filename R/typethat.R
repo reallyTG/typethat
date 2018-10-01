@@ -67,7 +67,8 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
 #' @export
 # type all packages in directory, tally results
 #
-type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE) {
+type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
+                              use_rev_deps=FALSE) {
 
   # tell genthat where to find the package sources
   options(genthat.source_paths="packages")
@@ -97,7 +98,29 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE) {
       cat(".\n.\n.\n > Package Loaded \n > Typing Package ... \n.\n.\n.\n")
 
       # do the thing
-      this_res <- type_from_package(package_names[i], skipgen=skipgen)
+      if (use_rev_deps) {
+        # list reverse dependencies
+        # FIXME: this requires manual mirror input, but i dont know another
+        #        way to do it yet...
+        rdeps <- tools::package_dependencies(package_names[i],
+                 which=c("Depends", "Imports", "LinkingTo", "Suggests"),
+                 reverse=TRUE, recursive=FALSE)
+        rdeps <- unlist(rdeps, use.names=FALSE)
+
+        if (length(rdeps) > 0) {
+          for (pname in rdeps) {
+            usePackage(pname)
+          }
+        }
+
+        # run
+        this_res <- type_from_package(package_names[i],
+                                      pkgs_to_run=c(package_names[i], rdeps),
+                                      skipgen=skipgen)
+      } else {
+        # just run
+        this_res <- type_from_package(package_names[i], skipgen=skipgen)
+      }
 
       cat(".\n.\n.\n > Package Typed \n > Writing, and continuing \n.\n.\n.\n")
 
@@ -112,6 +135,8 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE) {
       # remove.packages(package_names[i])
     }, error = function(e) {
       # something failed, lets just continue
+      print("Top level error dealing with package:")
+      print(e)
     })
   }
 }
@@ -311,7 +336,6 @@ analyze_type_information <- function(tally, type="type") {
 
     if (length(tally[[q]][[i]]) == 0) {
       # single argument function
-      # TODO: something about only being called once?
       res[[fun_names[i]]][[which_one[q]]]$morphicity <- "monomorphic"
       next
     }
