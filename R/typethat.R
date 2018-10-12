@@ -100,8 +100,13 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
       # do the thing
       if (use_rev_deps) {
         # list reverse dependencies
-        # FIXME: this requires manual mirror input, but i dont know another
-        #        way to do it yet...
+        # select default CRAN mirror, this should stop the following call from
+        # prompting the user. modify this i guess if you want a different
+        # mirror
+        local({ r <- getOption("repos")
+                r["CRAN"] <- "http://cran.r-project.org"
+                options(repos=r)})
+
         rdeps <- tools::package_dependencies(package_names[i],
                  which=c("Depends", "Imports", "LinkingTo", "Suggests"),
                  reverse=TRUE, recursive=FALSE)
@@ -153,7 +158,7 @@ usePackage <- function(p)
 
 #' Analyze all .RDS files (output from type_all_packages) in a specified dir.
 #' @param path path to the results of type_all_packages (this should be something
-#'             of the form */typeres)
+#'             of the form */type_res)
 #' @param type the type of info you want. either "type" or "class"
 #' @export
 #
@@ -186,6 +191,7 @@ analyze_all <- function(path, type="type") {
   res$num_mono_opt = 0
   res$num_poly_simpl = 0
   res$num_poly_simpl_opt = 0
+  res$listy = 0
   res$num_poly_compl = 0
   res$num_poly_compl_opt = 0
   res$num_poly_compl_other_opt = 0
@@ -212,6 +218,7 @@ analyze_all <- function(path, type="type") {
     res$num_mono_opt = res$num_mono_opt + counts$mono_o
     res$num_poly_simpl = res$num_poly_simpl + counts$polys
     res$num_poly_simpl_opt = res$num_poly_simpl_opt + counts$polys_o
+    res$listy = res$listy + counts$listy
     res$num_poly_compl = res$num_poly_compl + counts$polyc
     res$num_poly_compl_opt = res$num_poly_compl_opt + counts$polyc_o
     res$num_poly_compl_other_opt = res$num_poly_compl_other_opt + counts$polyc_o_o
@@ -233,6 +240,7 @@ simplify_analysis <- function(analysis) {
   num_mono_opt <- 0
   num_poly_simpl <- 0
   num_poly_simpl_opt <- 0
+  num_listy <- 0
   num_poly_compl <- 0
   num_poly_compl_opt <- 0
   num_poly_compl_w_other_opt <- 0
@@ -252,6 +260,8 @@ simplify_analysis <- function(analysis) {
         num_poly_simpl_opt = num_poly_simpl_opt + 1
       } else if (analysis[[i]][[1]]$polymorphicity == "optional monomorphic") {
         num_mono_opt = num_mono_opt + 1
+      } else if (analysis[[i]][[1]]$polymorphicity == "listy") {
+        num_listy = num_listy + 1
       } else {
         # it's complicated, we want the usage always but count as appropriate
         if (analysis[[i]][[1]]$polymorphicity == "complex polymorphic") {
@@ -274,6 +284,7 @@ simplify_analysis <- function(analysis) {
   res$mono_o = num_mono_opt
   res$polys = num_poly_simpl
   res$polys_o = num_poly_simpl_opt
+  res$listy = num_listy
   res$polyc = num_poly_compl
   res$polyc_o = num_poly_compl_opt
   res$polyc_o_o = num_poly_compl_w_other_opt
@@ -323,7 +334,10 @@ analyze_type_information <- function(tally, type="type") {
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
-  simple_polymorphic_types <- c("integer", "double", "numeric", "complex")
+  simple_polymorphic_types <- c("integer", "double", "numeric", "complex", "logical")
+
+  # also this one
+  function_polymorphic_types <- c("closure", "builtin", "special")
 
   # how many are monomorphic?
   for (i in 1:length(fun_names)) {
@@ -348,6 +362,8 @@ analyze_type_information <- function(tally, type="type") {
       }
     }
 
+    # TODO: This needs to change depending on if the user specified "type" or
+    # "class" or wte. Right not it only works (well) for "type".
     if (arg_count == length(tally[[q]][[i]])) {
       res[[fun_names[i]]][[which_one[q]]]$morphicity <- "monomorphic"
     } else {
@@ -372,9 +388,7 @@ analyze_type_information <- function(tally, type="type") {
             for (z in 1:length(tally[[q]][[i]][[j]])) {
               if (tally[[q]][[i]][[j]][[z]] == "NULL") {
                 # remove the NULL
-                # tally[[q]][[i]][[j]][[z]] <- NULL
-                # need list.remove
-                tally[[q]][[i]][[j]] <- list.remove(tally[[q]][[i]][[j]], c(z, z))
+                tally[[q]][[i]][[j]] <- rlist::list.remove(tally[[q]][[i]][[j]], c(z, z))
                 break
               }
             }
@@ -388,6 +402,7 @@ analyze_type_information <- function(tally, type="type") {
             }
           }
 
+          # check if the argument is "numeric"
           inter <- intersect(tally[[q]][[i]][[j]], simple_polymorphic_types)
           if (length(inter) == length(tally[[q]][[i]][[j]])) {
             if (is_null) {
@@ -396,15 +411,51 @@ analyze_type_information <- function(tally, type="type") {
               arg_polyc[ap_iter] <- "simple polymorphic"
             }
             ap_iter = ap_iter + 1
-          } else {
-            # ok, not just numerics
+            next
+          }
+
+          # check if arg is function
+          inter <- intersect(tally[[q]][[i]][[j]], function_polymorphic_types)
+          if (length(inter) == length(tally[[q]][[i]][[j]])) {
             if (is_null) {
-              arg_polyc[ap_iter] <- "optional complex polymorphic"
+              arg_polyc[ap_iter] <- "optional simple polymorphic"
             } else {
-              arg_polyc[ap_iter] <- "complex polymorphic"
+              arg_polyc[ap_iter] <- "simple polymorphic"
             }
             ap_iter = ap_iter + 1
+            next
           }
+
+          # check if the argument is "listy"
+          # does it contain list?
+          if ("list" %in% tally[[q]][[i]][[j]]) {
+            # remove it for now
+            for (z in 1:length(tally[[q]][[i]][[j]])) {
+              if (tally[[q]][[i]][[j]][[z]] == "list") {
+                # remove the list
+                tally[[q]][[i]][[j]] <- rlist::list.remove(tally[[q]][[i]][[j]], c(z, z))
+                break
+              }
+            }
+
+            # check the len now
+            if (length(tally[[q]][[i]][[j]]) == 1) {
+              # its just list or one other thing. FIXME:
+              # there is a "good chance" that this is a list OR vector.
+              # we need a smarter way to catch this
+              arg_polyc[ap_iter] <- "listy"
+              ap_iter = ap_iter + 1
+              next
+            }
+          }
+
+          # catch all for complex case
+          if (is_null) {
+            arg_polyc[ap_iter] <- "optional complex polymorphic"
+          } else {
+            arg_polyc[ap_iter] <- "complex polymorphic"
+          }
+          ap_iter = ap_iter + 1
         }
       }
 
@@ -440,6 +491,8 @@ analyze_type_information <- function(tally, type="type") {
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "simple polymorphic"
         } else if ("optional monomorphic" %in% arg_polyc) {
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "optional monomorphic"
+        } else if ("listy" %in% arg_polyc) {
+          res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "listy"
         } else {
           # this should never be reached
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "weird?"

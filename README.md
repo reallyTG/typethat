@@ -1,7 +1,7 @@
 # typethat
 R Package for Dynamic Type Analysis
 
-Sept 2018 // Work in Progress
+Oct 2018 // Work in Progress
 
 # Goals:
 
