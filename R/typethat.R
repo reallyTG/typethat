@@ -162,7 +162,7 @@ usePackage <- function(p)
 #' @param type the type of info you want. either "type" or "class"
 #' @export
 #
-analyze_all <- function(path, type="type") {
+analyze_all <- function(path, type="type", display="some") {
 
   if (substring(path, nchar(path)) == "/") {
     path = substring(path, 0, nchar(path)-1)
@@ -204,7 +204,7 @@ analyze_all <- function(path, type="type") {
     one_look <- analyze_type_information(look_at_me, type)
 
     # get counts
-    simpler <- simplify_analysis(one_look)
+    simpler <- simplify_analysis(one_look, display)
     counts <- simpler[[1]]
     polycs <- simpler[[2]]
     if (length(polycs) != 0) {
@@ -231,7 +231,7 @@ analyze_all <- function(path, type="type") {
 }
 
 #' @export
-simplify_analysis <- function(analysis) {
+simplify_analysis <- function(analysis, display="some") {
 
   res <- list()
 
@@ -272,6 +272,13 @@ simplify_analysis <- function(analysis) {
           num_poly_compl_w_other_opt = num_poly_compl_w_other_opt + 1
         }
 
+        if (display == "some") {
+          poly_compl_usage[[p]] <- analysis[[i]][[1]]$usage
+          poly_compl_usage[[p]] <- c(poly_compl_usage[[p]], name=names(analysis)[i])
+          p <- p + 1
+        }
+      }
+      if (display == "all") {
         poly_compl_usage[[p]] <- analysis[[i]][[1]]$usage
         poly_compl_usage[[p]] <- c(poly_compl_usage[[p]], name=names(analysis)[i])
         p <- p + 1
@@ -291,6 +298,20 @@ simplify_analysis <- function(analysis) {
 
 
   list(res, poly_compl_usage)
+}
+
+#' @param lot result from analyze_all
+#' @export
+get_all_for_kind <- function(lot, kind) {
+  out <- list()
+  inde <- 1
+  for (i in 1:length(lot[[2]])) {
+    if (lot[[2]][[i]]$polymorphicity[[1]] == kind) {
+      out[[inde]] <- lot[[2]][[i]]
+      inde <- inde + 1
+    }
+  }
+  out
 }
 
 #' analyze_type_information takes a tally and lists some things about it:

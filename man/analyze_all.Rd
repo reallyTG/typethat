@@ -4,11 +4,11 @@
 \alias{analyze_all}
 \title{Analyze all .RDS files (output from type_all_packages) in a specified dir.}
 \usage{
-analyze_all(path, type = "type")
+analyze_all(path, type = "type", display = "some")
 }
 \arguments{
 \item{path}{path to the results of type_all_packages (this should be something
-of the form */typeres)}
+of the form */type_res)}
 
 \item{type}{the type of info you want. either "type" or "class"}
 }
