@@ -5,6 +5,16 @@ type_trace_args <- function(a_trace) {
 	}
 }
 
+#' Small function to reprocess existing tmp files. Use this if you made
+#' any modifications to the result generating functions, and would like
+#' to have your result_XYZ files reflect them.
+#' @export
+reprocess_all_tmps <- function() {
+	package_names <- list.files("tmp")
+
+	type_all_packages(package_names, skipgen=TRUE)
+}
+
 #' Temporary function to update old traces for compliance.
 #' @export
 update_all_traces <- function(path) {
@@ -326,6 +336,10 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 		this_trace <- readRDS( f_path)
 
 		fname <- this_trace$fun
+
+		# skip if genthat didnt want to do it
+		if (attributes(this_trace)$class == "genthat_trace_skipped")
+		  next
 
 		# emit trace information
 	  trace_result <- type_trace_args_tally( this_trace)
