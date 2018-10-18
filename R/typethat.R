@@ -189,6 +189,7 @@ analyze_all <- function(path, type="type", display="some") {
   res$num_singles = 0
   res$num_mono = 0
   res$num_mono_opt = 0
+  res$num_stopping = 0 # NEW
   res$num_poly_simpl = 0
   res$num_poly_simpl_opt = 0
   res$listy = 0
@@ -216,6 +217,7 @@ analyze_all <- function(path, type="type", display="some") {
     res$num_singles = res$num_singles + counts$singles
     res$num_mono = res$num_mono + counts$mono
     res$num_mono_opt = res$num_mono_opt + counts$mono_o
+    res$num_stopping = res$num_stopping + counts$stopping
     res$num_poly_simpl = res$num_poly_simpl + counts$polys
     res$num_poly_simpl_opt = res$num_poly_simpl_opt + counts$polys_o
     res$listy = res$listy + counts$listy
@@ -238,6 +240,7 @@ simplify_analysis <- function(analysis, display="some") {
   num_singles <- 0
   num_mono <- 0
   num_mono_opt <- 0
+  num_stopping <- 0
   num_poly_simpl <- 0
   num_poly_simpl_opt <- 0
   num_listy <- 0
@@ -266,6 +269,8 @@ simplify_analysis <- function(analysis, display="some") {
         # it's complicated, we want the usage always but count as appropriate
         if (analysis[[i]][[1]]$polymorphicity == "complex polymorphic") {
           num_poly_compl = num_poly_compl + 1
+        } else if (analysis[[i]][[1]]$polymorphicity == "stopping monomorphic") {
+          num_stopping = num_stopping + 1
         } else if (analysis[[i]][[1]]$polymorphicity == "optional complex polymorphic") {
           num_poly_compl_opt = num_poly_compl_opt + 1
         } else {
@@ -289,6 +294,7 @@ simplify_analysis <- function(analysis, display="some") {
   res$singles = num_singles
   res$mono = num_mono
   res$mono_o = num_mono_opt
+  res$stopping = num_stopping
   res$polys = num_poly_simpl
   res$polys_o = num_poly_simpl_opt
   res$listy = num_listy
@@ -333,6 +339,10 @@ get_all_for_kind <- function(lot, kind) {
 #' @export
 #
 analyze_type_information <- function(tally, type="type") {
+  #
+  # TODO: column index type
+  #
+
   # tally[[1]] is all types w/ boxes per fun
   # tally[[2]] is all classes w/ " " "
   # tally[[3]] is all modes w/ " " "
@@ -382,7 +392,6 @@ analyze_type_information <- function(tally, type="type") {
         arg_count <- arg_count + 1
       }
     }
-
     # TODO: This needs to change depending on if the user specified "type" or
     # "class" or wte. Right not it only works (well) for "type".
     if (arg_count == length(tally[[q]][[i]])) {
@@ -395,6 +404,30 @@ analyze_type_information <- function(tally, type="type") {
       arg_polyc <- list()
       ap_iter <- 1
 
+      skipForStopping <- FALSE
+
+      if (arg_count == length(tally[[q]][[i]]) + 1) {
+        # here, arg_count is one more than the length, meaning only one argument
+        # is polymorphic. If it's retv, and retv has NULL, we have stopping
+        # monomorphism.
+        for (j in 1:length(tally[[q]][[i]])) {
+          arg_name <- attributes(tally[[1]][[i]])$names[j]
+          if (arg_name == "retv") {
+            # its the return val
+            if (length(tally[[q]][[i]][[j]]) == 2) {
+              res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "stopping monomorphic"
+              res[[fun_names[i]]][[which_one[q]]]$usage$polymorphicity <-
+              res[[fun_names[i]]][[which_one[q]]]$polymorphicity
+              skipForStopping <- TRUE
+              break
+            }
+          }
+        }
+      }
+
+      if (skipForStopping)
+        next
+
       for (j in 1:length(tally[[q]][[i]])) {
 
         is_null <- FALSE
@@ -402,8 +435,12 @@ analyze_type_information <- function(tally, type="type") {
         # look @ all argument lists which have more than 1 type
         if (length(tally[[q]][[i]][[j]]) > 1) {
 
+          # don't care about optionality for retv
+          arg_name <- attributes(tally[[1]][[i]])$names[j]
+
           # check for NULL
-          if ("NULL" %in% tally[[q]][[i]][[j]]) {
+          if ("NULL" %in% tally[[q]][[i]][[j]] &&
+              arg_name != "retv") {
             is_null <- TRUE
             # remove it for now
             for (z in 1:length(tally[[q]][[i]][[j]])) {
