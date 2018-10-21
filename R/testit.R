@@ -136,6 +136,16 @@ type_trace_args_tally <- function(a_trace) {
 			tryCatch({
 				the_thing <- eval( a_trace$args[[i]], a_trace$globals)
 
+				if (typeof(the_thing) == "language" &&
+			      length(the_thing) == 3 &&
+					  the_thing[[2]] == a_trace$pkg) {
+					# TODO: UNCLEAR. Should we do this? Rationale is that double eval
+					# will get rid of some cases where the thing has no business being
+					# language.
+					# Eval twice to get the real thing.
+					the_thing <- eval( the_thing, a_trace$globals)
+				}
+
 				arg_types[[i]] <- typeof(the_thing)
 				arg_classes[[i]] <- class(the_thing)
 				arg_mode[[i]] <- mode(the_thing)
@@ -173,7 +183,7 @@ get_used_args <- function(lot) {
 	used_args <- list()
 	for (i in 1:length(lot)) {
 		these_names <- names(lot[[i]]) # need to go 1:len-1 b/c of file_path saving
-		used_args[[attributes(lot[[i]])$fun]] <- union(these_names[1:length(these_names)-1], used_args[[attributes(lot[[i]])$fun]])
+		used_args[[attributes(lot[[i]])$fun]] <- union(these_names[1:(length(these_names)-1)], used_args[[attributes(lot[[i]])$fun]])
 	}
 
 	# display
@@ -354,6 +364,15 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 	}
 
 	# all_results
+	# clear null bois
+	i <- 1
+	while (i < length(all_results)) {
+		if (is.null(all_results[[i]])) {
+			all_results[[i]] <- NULL
+		} else {
+		  i <- i + 1
+		}
+	}
 
 	aggr_res <- aggregate_tally_results( all_results)
 

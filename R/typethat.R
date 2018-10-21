@@ -91,7 +91,7 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
 
     tryCatch({
 
-      cat(".\n.\n.\n > Loading Package ... \n.\n.\n.\n")
+      cat(".\n.\n.\n > Loading Package: ", package_names[i], " ... \n.\n.\n.\n", sep="")
 
       usePackage(package_names[i])
 
