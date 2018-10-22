@@ -140,7 +140,7 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
       # remove.packages(package_names[i])
     }, error = function(e) {
       # something failed, lets just continue
-      print("Top level error dealing with package:")
+      print("Top level error dealing with package: ")
       print(e)
     })
   }
@@ -159,10 +159,10 @@ usePackage <- function(p)
 #' Analyze all .RDS files (output from type_all_packages) in a specified dir.
 #' @param path path to the results of type_all_packages (this should be something
 #'             of the form */type_res)
-#' @param type the type of info you want. either "type" or "class"
+#' @param type the type of info you want. currently either "type" or "class"
 #' @export
 #
-analyze_all <- function(path, type="type", display="some") {
+analyze_all <- function(path, type="type", display="some", per_arg=FALSE) {
 
   if (substring(path, nchar(path)) == "/") {
     path = substring(path, 0, nchar(path)-1)
@@ -186,52 +186,104 @@ analyze_all <- function(path, type="type", display="some") {
   # prepare output as a list
   res <- list()
 
-  res$num_singles = 0
-  res$num_mono = 0
-  res$num_mono_opt = 0
-  res$num_stopping = 0 # NEW
-  res$num_poly_simpl = 0
-  res$num_poly_simpl_opt = 0
-  res$listy = 0
-  res$num_poly_compl = 0
-  res$num_poly_compl_opt = 0
-  res$num_poly_compl_other_opt = 0
+  if (!per_arg) {
+    res$num_singles = 0
+    res$num_mono = 0
+    res$num_mono_opt = 0
+    res$num_stopping = 0 # NEW
+    res$num_poly_simpl = 0 # split this into simple & complex
+    res$num_poly_simpl_opt = 0
+    res$listy = 0
+    res$indexy = 0
+    res$num_poly_compl = 0
+    res$num_poly_compl_opt = 0
+    res$num_poly_compl_other_opt = 0
+  } else {
+    res$num_singles = 0
+    res$num_mono = 0
+    res$num_mono_opt = 0
+    res$num_indexy = 0
+    res$num_opt_indexy = 0
+    res$num_listy = 0
+    res$num_opt_listy = 0
+    res$num_poly_num = 0
+    res$num_poly_num_opt = 0
+    res$num_poly_simpl_num = 0
+    res$num_poly_simpl_num_opt = 0
+    res$num_poly_fun = 0
+    res$num_poly_fun_opt = 0
+    res$num_poly_compl = 0
+    res$num_poly_compl_opt = 0
+  }
 
   poly_compls <- list()
 
   for (i in 1:length(lof)) {
     # look @ the file, do analysis
     look_at_me <- readRDS(paste(path, lof[i], sep="/"))
-    one_look <- analyze_type_information(look_at_me, type)
 
-    # get counts
-    simpler <- simplify_analysis(one_look, display)
-    counts <- simpler[[1]]
-    polycs <- simpler[[2]]
-    if (length(polycs) != 0) {
-      for (j in 1:length(polycs)) {
-        polycs[[j]]$pkg_name <- package_names[i]
+    # this will get results per function, if we care instead about how args are
+    # used only, we need something slighly different
+
+    if (!per_arg) {
+      # per function results are desired
+      one_look <- analyze_type_information(look_at_me, type)
+
+      # get counts
+      simpler <- simplify_analysis(one_look, display)
+      counts <- simpler[[1]]
+      polycs <- simpler[[2]]
+      if (length(polycs) != 0) {
+        for (j in 1:length(polycs)) {
+          polycs[[j]]$pkg_name <- package_names[i]
+        }
       }
+
+      res$num_singles = res$num_singles + counts$singles
+      res$num_mono = res$num_mono + counts$mono
+      res$num_mono_opt = res$num_mono_opt + counts$mono_o
+      res$num_stopping = res$num_stopping + counts$stopping
+      res$num_poly_simpl = res$num_poly_simpl + counts$polys
+      res$num_poly_simpl_opt = res$num_poly_simpl_opt + counts$polys_o
+      res$listy = res$listy + counts$listy
+      res$indexy = res$indexy + counts$indexy
+      res$num_poly_compl = res$num_poly_compl + counts$polyc
+      res$num_poly_compl_opt = res$num_poly_compl_opt + counts$polyc_o
+      res$num_poly_compl_other_opt = res$num_poly_compl_other_opt + counts$polyc_o_o
+
+      poly_compls <- c(poly_compls, polycs)
+
+    } else {
+      # here, we want to get results per argument
+      one_look <- analyze_argument_type_information(look_at_me, type, package_names[i])
+
+      # count everyone up
+      res$num_singles = res$num_singles + one_look$singletons
+      res$num_mono = res$num_mono + one_look$monomorphics
+      res$num_mono_opt = res$num_mono_opt + one_look$optional_monomorphics
+      res$num_indexy = res$num_indexy + one_look$indexy
+      res$num_opt_indexy = res$num_opt_indexy + one_look$optional_indexy
+      res$num_listy = res$num_listy + one_look$listy
+      res$num_opt_listy = res$num_opt_listy + one_look$optional_listy
+      res$num_poly_num = res$num_poly_num + one_look$numeric_polymorphic
+      res$num_poly_num_opt = res$num_poly_num_opt + one_look$optional_numeric_polymorphic
+      res$num_poly_simpl_num = res$num_poly_simpl_num + one_look$simple_numeric_polymorphic
+      res$num_poly_simpl_num_opt = res$num_poly_simpl_num_opt + one_look$optional_simple_numeric_polymorphic
+      res$num_poly_fun = res$num_poly_fun + one_look$function_polymorphic
+      res$num_poly_fun_opt = res$num_poly_fun_opt + one_look$optional_function_polymorphic
+      res$num_poly_compl = res$num_poly_compl + one_look$complex_polymorphic
+      res$num_poly_compl_opt = res$num_poly_compl_opt + one_look$optional_complex_polymorphic
+
+      # save the complex polymorphic arguments for inspection
+      poly_compls <- c(poly_compls, one_look$compl_usages)
     }
-
-    res$num_singles = res$num_singles + counts$singles
-    res$num_mono = res$num_mono + counts$mono
-    res$num_mono_opt = res$num_mono_opt + counts$mono_o
-    res$num_stopping = res$num_stopping + counts$stopping
-    res$num_poly_simpl = res$num_poly_simpl + counts$polys
-    res$num_poly_simpl_opt = res$num_poly_simpl_opt + counts$polys_o
-    res$listy = res$listy + counts$listy
-    res$num_poly_compl = res$num_poly_compl + counts$polyc
-    res$num_poly_compl_opt = res$num_poly_compl_opt + counts$polyc_o
-    res$num_poly_compl_other_opt = res$num_poly_compl_other_opt + counts$polyc_o_o
-
-    poly_compls <- c(poly_compls, polycs)
   }
 
   list(res, poly_compls)
 
 }
 
+#' only call with aggregate type analysis
 #' @export
 simplify_analysis <- function(analysis, display="some") {
 
@@ -244,6 +296,7 @@ simplify_analysis <- function(analysis, display="some") {
   num_poly_simpl <- 0
   num_poly_simpl_opt <- 0
   num_listy <- 0
+  num_indexy <- 0
   num_poly_compl <- 0
   num_poly_compl_opt <- 0
   num_poly_compl_w_other_opt <- 0
@@ -265,6 +318,8 @@ simplify_analysis <- function(analysis, display="some") {
         num_mono_opt = num_mono_opt + 1
       } else if (analysis[[i]][[1]]$polymorphicity == "listy") {
         num_listy = num_listy + 1
+      } else if (analysis[[i]][[1]]$polymorphicity == "indexy") {
+        num_indexy = num_indexy + 1
       } else {
         # it's complicated, we want the usage always but count as appropriate
         if (analysis[[i]][[1]]$polymorphicity == "complex polymorphic") {
@@ -298,6 +353,7 @@ simplify_analysis <- function(analysis, display="some") {
   res$polys = num_poly_simpl
   res$polys_o = num_poly_simpl_opt
   res$listy = num_listy
+  res$indexy = num_indexy
   res$polyc = num_poly_compl
   res$polyc_o = num_poly_compl_opt
   res$polyc_o_o = num_poly_compl_w_other_opt
@@ -320,6 +376,232 @@ get_all_for_kind <- function(lot, kind) {
   out
 }
 
+# this function should not exist
+# we ought to find a better way to do this
+app <- function(alist, aitem) {
+  alist[[length(alist) + 1]] <- aitem
+  alist
+}
+
+analyze_argument_type_information <- function(tally, type="type", pkgname="") {
+  # ^ called for each package result
+  # tally[[1]] is all types w/ boxes per fun
+  # tally[[2]] is all classes w/ " " "
+  # tally[[3]] is all modes w/ " " "
+  # tally[[4]] is all storage.modes w/ " " "
+
+  # to simplify, lets grab the function names
+  fun_names <- names(tally[[1]])
+
+  q = 1 # type is default, in q = 1
+  if (type == "class") {
+    q = 2 # if class specified, get 2
+  } else if (type == "mode") {
+    q = 3
+  } else if (type == "storage.mode") {
+    q = 4
+  }
+
+  which_one = c("type", "class", "mode", "storage.mode")
+
+  # simple numeric polymorphic: can be either indexy or numeric
+  simple_numeric_polymorphic_types <- c("integer", "double")
+
+  # these are the easy polymorphic types (and classes, modes)
+  # baked together in this delicious array
+  numeric_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
+
+  # also this one
+  function_polymorphic_types <- c("closure", "builtin", "special")
+
+  # also ...
+  list_index_types <- c("integer", "double", "character")
+
+  # we will be producing a list of lists, each containing arguments with
+  # the specified polymorphicity
+
+  singletons <- list() #
+  monomorphics <- list() #
+  optional_monomorphics <- list() #
+  indexy <- list() #
+  optional_indexy <- list() #
+  listy <- list() #
+  optional_listy <- list() #
+  simple_numeric_polymorphic <- list() #
+  optional_simple_numeric_polymorphic <- list() #
+  numeric_polymorphic <- list() #
+  optional_numeric_polymorphic <- list() #
+  function_polymorphic <- list() #
+  optional_function_polymorphic <- list() #
+  complex_polymorphic <- list() #
+  optional_complex_polymorphic <- list() #
+
+  compl_usages <- list() #
+
+  # for each package in the function
+  for (i in 1:length(fun_names)) {
+
+    if (length(tally[[q]][[i]]) == 0) {
+      next
+    }
+
+    arg_names <- names(tally[[q]][[i]])
+
+    # process singletons first
+    if (fun_names[i] %in% tally[[6]]) { # [[6]] has singleton funs
+      # add each argument to singletons
+      for (j in 1:length(tally[[q]][[i]])) {
+        singletons[[length(singletons) + 1]] <- paste(pkgname, fun_names[i], arg_names[[j]], sep="::")
+      }
+      next # skip to next function
+    }
+
+    # at this point, we know that the function we're looking at isn't a singleton.
+    # iterate over all arguments
+    for (j in 1:length(tally[[q]][[i]])) {
+      arg_usage <- tally[[q]][[i]][[j]]
+      arg_name <- arg_names[[j]]
+      arg_name_to_store <- paste(pkgname, fun_names[i], arg_name, sep="::")
+
+      # deal with monomorphic
+      if (length(arg_usage) == 1) {
+        monomorphics[[length(monomorphics) + 1]] <- arg_name_to_store
+        next # next arg
+      }
+
+      is_null <- FALSE
+
+      # is there NULL?
+      # check for NULL
+      if ("NULL" %in% arg_usage) { # && arg_name != "retv") {
+        is_null <- TRUE
+        # remove it for now
+        for (z in 1:length(arg_usage)) {
+          if (arg_usage[[z]] == "NULL") {
+            # remove the NULL
+            arg_usage <- rlist::list.remove(arg_usage, c(z, z))
+            break # move on
+          }
+        }
+
+        # check the len now
+        if (length(arg_usage) == 1) {
+          # it was just an optional argument
+          optional_monomorphics[[length(optional_monomorphics) + 1]] <- arg_name_to_store
+          next # next arg
+        }
+      }
+
+      # is it simple numeric?
+      inter <- intersect(arg_usage, simple_numeric_polymorphic_types)
+      if (length(inter) == length(arg_usage)) {
+        if (is_null) {
+          optional_simple_numeric_polymorphic <- app(optional_simple_numeric_polymorphic, arg_name_to_store)
+        } else {
+          simple_numeric_polymorphic <- app(simple_numeric_polymorphic, arg_name_to_store)
+        }
+        next
+      }
+
+      # is it more complex numeric?
+      inter <- intersect(arg_usage, numeric_polymorphic_types)
+      if (length(inter) == length(arg_usage)) {
+        if (is_null) {
+          optional_numeric_polymorphic <- app(optional_numeric_polymorphic, arg_name_to_store)
+        } else {
+          numeric_polymorphic <- app(numeric_polymorphic, arg_name_to_store)
+        }
+        next
+      }
+
+      # is it indexy?
+      inter <- intersect(arg_usage, list_index_types)
+      if (length(inter) == length(arg_usage)) {
+        if (is_null) {
+          optional_indexy <- app(optional_indexy, arg_name_to_store)
+        } else {
+          indexy <- app(indexy, arg_name_to_store)
+        }
+        next
+      }
+
+      # is it function-y?
+      inter <- intersect(arg_usage, function_polymorphic_types)
+      if (length(inter) == length(arg_usage)) {
+        if (is_null) {
+          optional_function_polymorphic <- app(optional_function_polymorphic, arg_name_to_store)
+        } else {
+          function_polymorphic <- app(function_polymorphic, arg_name_to_store)
+        }
+        next
+      }
+
+      # is it listy?
+      # does it contain list?
+      if ("list" %in% arg_usage) {
+        # remove it for now
+        for (z in 1:length(arg_usage)) {
+          if (arg_usage[[z]] == "list") {
+            # remove the list
+            arg_usage <- rlist::list.remove(arg_usage, c(z, z))
+            break
+          }
+        }
+
+        # check the len now
+        if (length(arg_usage) == 1) {
+          # its just list or one other thing. FIXME:
+          # there is a "good chance" that this is a list OR vector.
+          # we need a smarter way to catch this
+          if (is_null) {
+            optional_listy <- app(optional_listy, arg_name_to_store)
+          } else {
+            listy <- app(listy, arg_name_to_store)
+          }
+          next
+        }
+      }
+
+      # if we're here, it means that we haven't stumbled on anything quite yet
+      # lets just call it complex, and move on
+      if (is_null) {
+        optional_complex_polymorphic <- app(optional_complex_polymorphic, arg_name_to_store)
+      } else {
+        complex_polymorphic <- app(complex_polymorphic, arg_name_to_store)
+      }
+
+      # print("Complex Polymorphic:")
+      # print(arg_name_to_store)
+      # print(arg_usage)
+      # print("--------------------")
+
+      usage_report <- c(arg_name_to_store)
+      usage_report <- c(usage_report, tally[[q]][[i]][[j]])
+
+      compl_usages[[length(compl_usages) + 1]] <- usage_report
+    }
+  }
+
+  # return
+  list(singletons=length(singletons),
+  monomorphics=length(monomorphics),
+  optional_monomorphics=length(optional_monomorphics),
+  indexy=length(indexy),
+  optional_indexy=length(optional_indexy),
+  listy=length(listy),
+  optional_listy=length(optional_listy),
+  simple_numeric_polymorphic=length(simple_numeric_polymorphic),
+  optional_simple_numeric_polymorphic=length(optional_simple_numeric_polymorphic),
+  numeric_polymorphic=length(numeric_polymorphic),
+  optional_numeric_polymorphic=length(optional_numeric_polymorphic),
+  function_polymorphic=length(function_polymorphic),
+  optional_function_polymorphic=length(optional_function_polymorphic),
+  complex_polymorphic=length(complex_polymorphic),
+  optional_complex_polymorphic=length(optional_complex_polymorphic),
+  compl_usages=compl_usages)
+
+}
+
 #' analyze_type_information takes a tally and lists some things about it:
 #' [1] how many easy monomorphic, hard monomorphic, and polymorphic functions
 #'     are there
@@ -339,10 +621,6 @@ get_all_for_kind <- function(lot, kind) {
 #' @export
 #
 analyze_type_information <- function(tally, type="type") {
-  #
-  # TODO: column index type
-  #
-
   # tally[[1]] is all types w/ boxes per fun
   # tally[[2]] is all classes w/ " " "
   # tally[[3]] is all modes w/ " " "
@@ -365,10 +643,13 @@ analyze_type_information <- function(tally, type="type") {
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
-  simple_polymorphic_types <- c("integer", "double", "numeric", "complex", "logical")
+  simple_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
 
   # also this one
   function_polymorphic_types <- c("closure", "builtin", "special")
+
+  # also ...
+  list_index_types <- c("integer", "double", "character")
 
   # how many are monomorphic?
   for (i in 1:length(fun_names)) {
@@ -472,6 +753,14 @@ analyze_type_information <- function(tally, type="type") {
             next
           }
 
+          # check if argument is "indexy"
+          inter <- intersect(tally[[q]][[i]][[j]], list_index_types)
+          if (length(inter) == length(tally[[q]][[i]][[j]])) {
+            arg_polyc[ap_iter] <- "indexy"
+            ap_iter = ap_iter + 1
+            next
+          }
+
           # check if arg is function
           inter <- intersect(tally[[q]][[i]][[j]], function_polymorphic_types)
           if (length(inter) == length(tally[[q]][[i]][[j]])) {
@@ -551,6 +840,8 @@ analyze_type_information <- function(tally, type="type") {
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "optional monomorphic"
         } else if ("listy" %in% arg_polyc) {
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "listy"
+        } else if ("indexy" %in% arg_polyc) {
+          res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "indexy"
         } else {
           # this should never be reached
           res[[fun_names[i]]][[which_one[q]]]$polymorphicity <- "weird?"

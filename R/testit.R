@@ -108,7 +108,7 @@ type_trace_args_display <- function(a_trace) {
 #' @param a_trace the trace to analyze
 #' @param tally the tally to add the analysis to
 #'
-
+#
 type_trace_args_tally <- function(a_trace) {
 	# fun name
 	fun_name <- a_trace$fun
@@ -136,9 +136,11 @@ type_trace_args_tally <- function(a_trace) {
 			tryCatch({
 				the_thing <- eval( a_trace$args[[i]], a_trace$globals)
 
+				# if the thing evals to something like XYZ::ABC, then its probably meant
+				# to be evaluated again (to get the thing out)
 				if (typeof(the_thing) == "language" &&
 			      length(the_thing) == 3 &&
-					  the_thing[[2]] == a_trace$pkg) {
+					  (the_thing[[2]] == a_trace$pkg || the_thing[[2]] == "datasets")) {
 					# TODO: UNCLEAR. Should we do this? Rationale is that double eval
 					# will get rid of some cases where the thing has no business being
 					# language.
@@ -322,8 +324,7 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 	fname <- ""
 
 	# determine how many traces there are of each function
-	# functions only called one time are trivially monomorphic, so we might
-	# be interested in accounting for those.
+	# functions only called one time are trivially monomorphic
 	singletons <- list()
 	s_p <- 1
 	double_down <- list.files(path_to_dir) # the files are in pkgname/pkgname...
@@ -373,9 +374,7 @@ type_trace_all_tally <- function(file_names, path_to_dir) {
 		  i <- i + 1
 		}
 	}
-
 	aggr_res <- aggregate_tally_results( all_results)
-
 }
 
 #
