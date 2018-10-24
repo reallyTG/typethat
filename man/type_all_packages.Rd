@@ -6,7 +6,7 @@
 e.g. how many functions have an argument with more than one type?}
 \usage{
 type_all_packages(package_names, clean = FALSE, skipgen = FALSE,
-  use_rev_deps = FALSE)
+  use_rev_deps = FALSE, quiet = TRUE)
 }
 \arguments{
 \item{package_names}{the list of package names to type.}

@@ -35,7 +35,8 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
   # first, generate the trace results
   # cant prune if exporting
 
-  cat(" > Generating ... \n")
+  if (!quiet)
+    cat(" > Generating ... \n")
 
   if (!skipgen) {
     genthat::gen_from_package( pkgs_to_trace, pkgs_to_run,
@@ -43,7 +44,8 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
                       output_dir=paste("tmp/", pkgs_to_trace, sep=""), ...)
   }
 
-  cat(" > Typing ... \n")
+  if (!quiet)
+    cat(" > Typing ... \n")
 
   # next, analyze the results
   # > first, get list of files
@@ -68,7 +70,7 @@ type_from_package <- function(pkgs_to_trace, pkgs_to_run=pkgs_to_trace,
 # type all packages in directory, tally results
 #
 type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
-                              use_rev_deps=FALSE) {
+                              use_rev_deps=FALSE, quiet=TRUE) {
 
   # tell genthat where to find the package sources
   options(genthat.source_paths="packages")
@@ -91,11 +93,13 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
 
     tryCatch({
 
-      cat(".\n.\n.\n > Loading Package: ", package_names[i], " ... \n.\n.\n.\n", sep="")
+      if (!quiet)
+        cat(".\n.\n.\n > Loading Package: ", package_names[i], " ... \n.\n.\n.\n", sep="")
 
       usePackage(package_names[i])
 
-      cat(".\n.\n.\n > Package Loaded \n > Typing Package ... \n.\n.\n.\n")
+      if (!quiet)
+        cat(".\n.\n.\n > Package Loaded \n > Typing Package ... \n.\n.\n.\n")
 
       # do the thing
       if (use_rev_deps) {
@@ -127,7 +131,8 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
         this_res <- type_from_package(package_names[i], skipgen=skipgen)
       }
 
-      cat(".\n.\n.\n > Package Typed \n > Writing, and continuing \n.\n.\n.\n")
+      if (!quiet)
+        cat(".\n.\n.\n > Package Typed \n > Writing, and continuing \n.\n.\n.\n")
 
       if (!is.null(this_res)) {
         # write(this_res, paste("./type_res/result_", package_names[i], sep=""))
@@ -140,8 +145,10 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
       # remove.packages(package_names[i])
     }, error = function(e) {
       # something failed, lets just continue
-      print("Top level error dealing with package: ")
-      print(e)
+      if (!quiet) {
+        print("Top level error dealing with package: ")
+        print(e)
+      }
     })
   }
 }
@@ -362,6 +369,7 @@ simplify_analysis <- function(analysis, display="some") {
   list(res, poly_compl_usage)
 }
 
+#' Get all trace results for a particular kind of polymorphism.
 #' @param lot result from analyze_all
 #' @export
 get_all_for_kind <- function(lot, kind) {
