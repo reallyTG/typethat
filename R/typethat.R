@@ -153,6 +153,64 @@ type_all_packages <- function(package_names, clean=FALSE, skipgen=FALSE,
   }
 }
 
+# |
+# |
+# TODO Before calling type_a_package
+# install and uninstall package names
+# first, set up directory structure
+# if directory doesnt exist, make it:
+# dir.create("type_res", showWarnings=FALSE)
+# usePackage(package_names[i]) \forall i
+# |
+# |
+
+#' Function which takes a list of package_names (for big parallel call to
+#' type_a_package), and prepares for the call.
+#'
+#' @export
+#
+prep_for_parallel <- function(num_cores=1) {
+  # tell genthat where to find the package sources
+  options(genthat.source_paths="packages")
+
+  # first, set up directory structure
+  # if directory doesnt exist, make it:
+  dir.create("type_res", showWarnings=FALSE)
+
+  registerDoMC(num_cores)
+  # gonna do this elsewhere
+  # get each package
+  # for (name in package_names) {
+  #   usePackage(name)
+  # }
+}
+
+#' Type just one package. Use this with foreach ... %dopar% if you want
+#' parallelism.
+#' @export
+#
+type_a_package <- function(package_name, clean=FALSE, skipgen=FALSE, quiet=TRUE) {
+
+  tryCatch({
+
+    # get do it
+    this_res <- type_from_package(package_name, skipgen=skipgen)
+
+    if (!is.null(this_res)) {
+      saveRDS(this_res, paste("./type_res/result_", package_name, ".RDS", sep=""))
+    }
+
+    # remove the package? dont want it to take up space
+    # remove.packages(package_names[i])
+  }, error = function(e) {
+    # something failed, lets just continue
+    if (!quiet) {
+      print("Top level error dealing with package: ")
+      print(e)
+    }
+  })
+}
+
 # for downloading packages properly
 # adapted from http://www.salemmarafi.com/code/install-r-package-automatically/
 #' @export
