@@ -485,6 +485,7 @@ simplify_analysis <- function(analysis, display="some") {
   # }
 
   p <- 1
+  pp <- 1
   for (i in 1:length(analysis)) {
     if (!analysis[[i]][[1]]$morphicity == func_poly_type_names$poly) {
       # must be single or mono
@@ -575,7 +576,7 @@ analyze_argument_type_information <- function(tally, type="type", pkgname="") {
 
   # also ...
   list_index_types <- c("integer", "double", "character")
-  list_index_classes <- c("numeric", "character")
+  list_index_classes <- c("numeric", "integer", "character")
 
   if (q == 2) { # class
     simple_numeric_polymorphic_types  <- simple_numeric_polymorphic_classes
