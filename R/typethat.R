@@ -935,7 +935,7 @@ analyze_type_information <- function(tally, type="type") {
           }
 
           # check if the argument is "numeric"
-          inter <- intersect(tally[[q]][[i]][[j]], simple_polymorphic_types)
+          inter <- intersect(tally[[q]][[i]][[j]], numeric_polymorphic_types)
           if (length(inter) == length(tally[[q]][[i]][[j]])) {
             if (is_null) {
               arg_polyc[ap_iter] <- paste("optional", poly_type_names$nume) # "optional numeric"
