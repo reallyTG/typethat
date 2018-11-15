@@ -485,7 +485,6 @@ simplify_analysis <- function(analysis, display="some") {
   # }
 
   p <- 1
-  pp <- 1
   for (i in 1:length(analysis)) {
     if (!analysis[[i]][[1]]$morphicity == func_poly_type_names$poly) {
       # must be single or mono
@@ -811,16 +810,27 @@ analyze_type_information <- function(tally, type="type") {
 
   # simple numeric polymorphic: can be either indexy or numeric
   simple_numeric_polymorphic_types <- c("integer", "double")
+  simple_numeric_polymorphic_classes <- c("numeric", "integer") # monomorphic in terms of class now
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
-  simple_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
+  numeric_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
+  numeric_polymorphic_classes <- c("numeric", "integer", "complex", "logical")
 
   # also this one
   function_polymorphic_types <- c("closure", "builtin", "special")
+  function_polymorphic_classes <- c("function") # monomorphic in terms of class now
 
   # also ...
   list_index_types <- c("integer", "double", "character")
+  list_index_classes <- c("numeric", "integer", "character")
+
+  if (q == 2) { # class
+    simple_numeric_polymorphic_types  <- simple_numeric_polymorphic_classes
+    numeric_polymorphic_types         <- numeric_polymorphic_classes
+    function_polymorphic_types        <- function_polymorphic_classes
+    list_index_types                  <- list_index_classes
+  }
 
   # how many are monomorphic?
   for (i in 1:length(fun_names)) {
