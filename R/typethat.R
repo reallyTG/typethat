@@ -213,6 +213,26 @@ give_only_polymorphic <- function(df) {
   df[-remove_me,]
 }
 
+#' Plot a bar chart: uses results from transform_results and give_only_polymorphic
+#' @export
+plot_bar <- function(df) {
+  bp <- ggplot(df, aes(x=type, y=num, color=type)) +
+        geom_bar(stat="identity", fill="white")
+
+  # make the bar chart
+  pie <- bp + coord_flip() + theme(legend.position="none")
+}
+
+#' Plot a pie chart: uses results from transform_results and give_only_polymorphic
+#' @export
+plot_pie <- function(df) {
+  bp <- ggplot(df, aes(x="", y=num, fill=type)) +
+        geom_bar(width=1, stat="identity")
+
+  # make the pie chart
+  pie <- bp + coord_polar("y", start=0)
+}
+
 #' Function which takes a list of package_names (for big parallel call to
 #' type_a_package), and prepares for the call.
 #'
@@ -542,16 +562,27 @@ analyze_argument_type_information <- function(tally, type="type", pkgname="") {
 
   # simple numeric polymorphic: can be either indexy or numeric
   simple_numeric_polymorphic_types <- c("integer", "double")
+  simple_numeric_polymorphic_classes <- c("numeric")
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
   numeric_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
+  numeric_polymorphic_classes <- c("numeric", "complex", "logical")
 
   # also this one
   function_polymorphic_types <- c("closure", "builtin", "special")
+  function_polymorphic_classes <- c("function")
 
   # also ...
   list_index_types <- c("integer", "double", "character")
+  list_index_classes <- c("numeric", "character")
+
+  if (q == 2) { # class
+    simple_numeric_polymorphic_types  <- simple_numeric_polymorphic_classes
+    numeric_polymorphic_types         <- numeric_polymorphic_classes
+    function_polymorphic_types        <- function_polymorphic_classes
+    list_index_types                  <- list_index_classes
+  }
 
   # we will be producing a list of lists, each containing arguments with
   # the specified polymorphicity
