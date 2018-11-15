@@ -562,16 +562,16 @@ analyze_argument_type_information <- function(tally, type="type", pkgname="") {
 
   # simple numeric polymorphic: can be either indexy or numeric
   simple_numeric_polymorphic_types <- c("integer", "double")
-  simple_numeric_polymorphic_classes <- c("numeric")
+  simple_numeric_polymorphic_classes <- c("numeric", "integer") # monomorphic in terms of class now
 
   # these are the easy polymorphic types (and classes, modes)
   # baked together in this delicious array
   numeric_polymorphic_types <- c("integer", "double", "complex", "logical") # "numeric" ?
-  numeric_polymorphic_classes <- c("numeric", "complex", "logical")
+  numeric_polymorphic_classes <- c("numeric", "integer", "complex", "logical")
 
   # also this one
   function_polymorphic_types <- c("closure", "builtin", "special")
-  function_polymorphic_classes <- c("function")
+  function_polymorphic_classes <- c("function") # monomorphic in terms of class now
 
   # also ...
   list_index_types <- c("integer", "double", "character")
