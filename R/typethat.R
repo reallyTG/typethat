@@ -769,6 +769,54 @@ analyze_argument_type_information <- function(tally, type="type", pkgname="") {
 
 }
 
+#' analyze_attributes :: look @ & aggregate attribute information over list of files
+#' @param pname the name of the package
+#' @param path_to_dir the path to the directory
+#' @param lof the files to read (list.files() of the /tmp/... stuff)
+#' @export
+analyze_attributes <- function(lof, path_to_dir="", pname="") {
+  # lapply(X, FUN, ...)
+
+  Reduce("union", lapply(lof, function(x) {
+    the_trace <- readRDS(x) # a trace, with $args and $globals
+
+    Reduce("union", lapply(the_trace$args, function(y) {
+      tryCatch({
+        the_eval <- eval(y, the_trace$globals)
+
+        attrs <- attributes(the_eval)
+
+        # what constitutes a good attribute to count?
+        # many things have a names attribute, and things with a class have a
+        # class attribute as well
+
+        if (!is.null(attrs$names)) {
+          attrs$names <- NULL
+        }
+        if (!is.null(attrs$row.names)) {
+          attrs$row.names <- NULL
+        }
+        if (!is.null(attrs$class)) {
+          attrs$class <- NULL
+        }
+        if (!is.null(attrs$dim)) {
+          attrs$dim <- NULL
+        }
+        if (!is.null(attrs$genthat_extracted_closure)) {
+          attrs$genthat_extracted_closure <- NULL
+        }
+
+        # return
+        attrs
+
+      }, error = function(e) {
+        cat("Error <", e, "> in trace: [", x, "].\n")
+        c()
+      })
+    }))
+  }))
+}
+
 #' analyze_type_information takes a tally and lists some things about it:
 #' [1] how many easy monomorphic, hard monomorphic, and polymorphic functions
 #'     are there
