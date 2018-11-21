@@ -297,7 +297,6 @@ usePackage <- function(p)
 #'             of the form */type_res)
 #' @param type the type of info you want. currently either "type" or "class"
 #' @export
-#
 analyze_all <- function(path, type="type", display="some", per_arg=FALSE) {
 
   if (substring(path, nchar(path)) == "/") {
